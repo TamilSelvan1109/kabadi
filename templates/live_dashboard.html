@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Kabaddi Tracking Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 20px;
+        }
+        
+        .video-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            min-height: 800px; /* Ensure minimum height */
+        }
+        
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .panel {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .panel h3 {
+            margin-bottom: 15px;
+            color: #333;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 8px;
+            font-size: 1.2em;
+        }
+        
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 20px 0;
+            background: linear-gradient(45deg, #f8f9ff, #ffffff);
+        }
+        
+        .upload-area:hover {
+            border-color: #28a745;
+            background: linear-gradient(45deg, #f0fff0, #ffffff);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        }
+        
+        .upload-area p {
+            font-size: 1.1em;
+            color: #667eea;
+            margin: 10px 0;
+        }
+        
+        .method-selector {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .method-btn {
+            padding: 12px 20px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.95em;
+            font-weight: 500;
+        }
+        
+        .method-btn.active {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            margin: 8px 5px;
+            width: calc(100% - 10px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .btn-success {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+        }
+        
+        .btn-success:hover {
+            box-shadow: 0 8px 25px rgba(40, 167, 69, 0.4);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(45deg, #dc3545, #c82333);
+            box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+        }
+        
+        .btn-danger:hover {
+            box-shadow: 0 8px 25px rgba(220, 53, 69, 0.4);
+        }
+        
+        .video-container {
+            position: relative;
+            text-align: center;
+            margin: 25px 0;
+        }
+        
+        .video-frame {
+            max-width: 100%;
+            min-width: 1000px; /* Minimum width for better visibility */
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .canvas-container {
+            position: relative;
+            display: inline-block;
+        }
+        
+        #drawingCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            cursor: crosshair;
+            border-radius: 15px;
+            z-index: 10;
+            pointer-events: auto;
+            min-width: 1000px; /* Ensure canvas is large enough */
+        }
+        
+        .live-video {
+            width: 100%;
+            min-width: 1000px; /* Minimum width for better visibility */
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .status-message {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            text-align: center;
+            font-weight: 500;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .status-success {
+            background: linear-gradient(45deg, #d4edda, #c3e6cb);
+            color: #155724;
+            border: 2px solid #28a745;
+        }
+        
+        .status-error {
+            background: linear-gradient(45deg, #f8d7da, #f5c6cb);
+            color: #721c24;
+            border: 2px solid #dc3545;
+        }
+        
+        .status-info {
+            background: linear-gradient(45deg, #d1ecf1, #bee5eb);
+            color: #0c5460;
+            border: 2px solid #17a2b8;
+        }
+        
+        .violation-log {
+            max-height: 250px;
+            overflow-y: auto;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 15px;
+            background: linear-gradient(45deg, #f8f9fa, #ffffff);
+        }
+        
+        .violation-entry {
+            padding: 12px;
+            margin: 8px 0;
+            background: linear-gradient(45deg, #fff3cd, #ffeaa7);
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            font-size: 0.9em;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        .violation-entry.critical {
+            background: linear-gradient(45deg, #f8d7da, #f5c6cb);
+            border-color: #dc3545;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .stat-box {
+            background: linear-gradient(45deg, #f8f9fa, #ffffff);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+        
+        .stat-box:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        }
+        
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .stat-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 8px;
+            font-weight: 500;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .hough-lines {
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .line-option {
+            display: inline-block;
+            margin: 8px;
+            padding: 10px 18px;
+            background: linear-gradient(45deg, #f8f9fa, #ffffff);
+            border: 2px solid #dee2e6;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+        
+        .line-option:hover {
+            background: linear-gradient(45deg, #e9ecef, #f8f9fa);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .line-option.selected {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            border-color: #28a745;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .stats {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Live Kabaddi Tracking</h1>
+            <p>Real-time player tracking with violation detection</p>
+        </div>
+        
+        <div class="main-content">
+            <!-- Main Video Section -->
+            <div class="video-section">
+                <h3>Live Tracking Feed</h3>
+                
+                <!-- Setup Phase -->
+                <div id="setupPhase">
+                    <div class="upload-area" id="uploadArea">
+                        <p>📹 Upload Video for Tracking</p>
+                        <p><small>Drag & drop or click to browse</small></p>
+                        <input type="file" id="videoInput" accept="video/*" style="display: none;">
+                    </div>
+                    
+                    <div class="video-container" id="boundarySetup" style="display: none;">
+                        <div class="canvas-container">
+                            <img id="videoFrame" class="video-frame">
+                            <canvas id="drawingCanvas"></canvas>
+                        </div>
+                        <div class="method-selector">
+                            <div class="method-btn active" data-method="TWO_POINTS">Two Points</div>
+                            <div class="method-btn" data-method="MULTIPOINTS">Multi Points</div>
+                            <div class="method-btn" data-method="HOUGH">Auto Detect</div>
+                        </div>
+                        <div id="houghLines" class="hough-lines hidden"></div>
+                        <button class="btn btn-success" id="saveBoundaryBtn" disabled>Save Boundary & Start Tracking</button>
+                    </div>
+                </div>
+                
+                <!-- Live Tracking Phase -->
+                <div id="trackingPhase" style="display: none;">
+                    <!-- Preview Phase -->
+                    <div id="previewPhase">
+                        <h4>Player Tracking Preview</h4>
+                        <div class="video-container">
+                            <img id="previewFrame" class="live-video" style="display: none;">
+                        </div>
+                        <div style="text-align: center; margin: 20px 0;">
+                            <button class="btn btn-success" id="confirmTrackingBtn" style="display: none;">✅ Start Live Tracking</button>
+                            <button class="btn" id="retryPreviewBtn" style="display: none;">🔄 Retry Preview</button>
+                        </div>
+                        <div id="previewStatus" class="status-message" style="display: none;"></div>
+                    </div>
+                    
+                    <!-- Live Tracking -->
+                    <div id="liveTrackingPhase" style="display: none;">
+                        <div class="video-container">
+                            <img id="liveVideo" class="live-video" src="/video_feed" style="display: none;">
+                        </div>
+                        <div style="text-align: center; margin: 20px 0;">
+                            <button class="btn btn-danger" id="stopTrackingBtn" style="display: none;">⏹️ Stop Tracking</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="statusMessages"></div>
+            </div>
+            
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <!-- Statistics Panel -->
+                <div class="panel">
+                    <h3>📊 Live Statistics</h3>
+                    <div class="stats">
+                        <div class="stat-box">
+                            <div class="stat-number" id="activePlayersCount">0</div>
+                            <div class="stat-label">Active Players</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-number" id="violatedPlayersCount">0</div>
+                            <div class="stat-label">Violated Players</div>
+                        </div>
+                    </div>
+                    <div class="stats">
+                        <div class="stat-box">
+                            <div class="stat-number" id="totalViolationsCount">0</div>
+                            <div class="stat-label">Total Violations</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-number" id="frameCount">0</div>
+                            <div class="stat-label">Frame Count</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Violation Log Panel -->
+                <div class="panel">
+                    <h3>🚨 Violation Log</h3>
+                    <div class="violation-log" id="violationLog">
+                        <p style="text-align: center; color: #666;">No violations detected yet</p>
+                    </div>
+                    <button class="btn" id="clearLogBtn" onclick="clearViolationLog()">Clear Log</button>
+                </div>
+                
+                <!-- Violated Players Panel -->
+                <div class="panel">
+                    <h3>❌ Eliminated Players</h3>
+                    <div id="violatedPlayersList">
+                        <p style="text-align: center; color: #666;">No players eliminated yet</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentMethod = 'TWO_POINTS';
+        let drawingPoints = [];
+        let isDrawing = false;
+        let canvas, ctx;
+        let videoUploaded = false;
+        let boundaryDefined = false;
+        let trackingActive = false;
+        let houghLines = [];
+        let selectedHoughLine = -1;
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+            canvas = document.getElementById('drawingCanvas');
+            ctx = canvas.getContext('2d');
+            setInterval(updateViolationStats, 1000);
+        });
+        
+        function checkVideoStatus() {
+            fetch('/get_video_frame')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Video already exists, skip upload and go to boundary setup
+                    document.getElementById('uploadArea').style.display = 'none';
+                    document.getElementById('boundarySetup').style.display = 'block';
+                    videoUploaded = true;
+                    showStatus('✅ Video ready! Define boundary line to start tracking.', 'success');
+                    loadVideoFrame();
+                } else {
+                    // No video, show upload area
+                    document.getElementById('uploadArea').style.display = 'block';
+                    document.getElementById('boundarySetup').style.display = 'none';
+                }
+            })
+            .catch(() => {
+                // Error checking video, show upload area
+                document.getElementById('uploadArea').style.display = 'block';
+                document.getElementById('boundarySetup').style.display = 'none';
+            });
+        }
+        
+        function setupEventListeners() {
+            const uploadArea = document.getElementById('uploadArea');
+            const videoInput = document.getElementById('videoInput');
+            
+            uploadArea.addEventListener('click', () => videoInput.click());
+            uploadArea.addEventListener('dragover', handleDragOver);
+            uploadArea.addEventListener('drop', handleDrop);
+            videoInput.addEventListener('change', handleFileSelect);
+            
+            document.querySelectorAll('.method-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentMethod = this.dataset.method;
+                    resetDrawing();
+                    console.log('Method changed to:', currentMethod);
+                });
+            });
+            
+            document.getElementById('saveBoundaryBtn').addEventListener('click', saveBoundary);
+            document.getElementById('confirmTrackingBtn').addEventListener('click', startTracking);
+            document.getElementById('retryPreviewBtn').addEventListener('click', showPreview);
+            document.getElementById('stopTrackingBtn').addEventListener('click', stopTracking);
+        }
+        
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.currentTarget.classList.add('dragover');
+        }
+        
+        function handleDrop(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                uploadVideo(files[0]);
+            }
+        }
+        
+        function handleFileSelect(e) {
+            if (e.target.files.length > 0) {
+                uploadVideo(e.target.files[0]);
+            }
+        }
+        
+        function uploadVideo(file) {
+            // Check file size (2GB limit)
+            const maxSize = 2 * 1024 * 1024 * 1024; // 2GB
+            if (file.size > maxSize) {
+                showStatus('❌ File too large! Maximum size: 2GB', 'error');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('video', file);
+            
+            showStatus(`📤 Uploading ${(file.size / (1024*1024)).toFixed(1)}MB video...`, 'info');
+            
+            fetch('/upload_video', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showStatus('✅ Video uploaded! Loading frame for boundary setup...', 'success');
+                    document.getElementById('uploadArea').style.display = 'none';
+                    document.getElementById('boundarySetup').style.display = 'block';
+                    videoUploaded = true;
+                    loadVideoFrame();
+                } else {
+                    showStatus('❌ Upload failed: ' + data.error, 'error');
+                }
+            })
+            .catch(error => {
+                showStatus('❌ Upload error: ' + error, 'error');
+            });
+        }
+        
+        function loadVideoFrame() {
+            showStatus('🔄 Loading video frame...', 'info');
+            
+            fetch('/get_video_frame')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const img = document.getElementById('videoFrame');
+                    img.src = 'data:image/jpeg;base64,' + data.frame;
+                    img.onload = function() {
+                        // Ensure canvas matches image size for proper interaction
+                        canvas.width = this.naturalWidth;
+                        canvas.height = this.naturalHeight;
+                        
+                        // Set canvas display size to match image
+                        canvas.style.width = this.offsetWidth + 'px';
+                        canvas.style.height = this.offsetHeight + 'px';
+                        
+                        // Setup canvas event listeners after canvas is ready
+                        canvas.addEventListener('mousedown', startDrawing);
+                        canvas.addEventListener('mousemove', draw);
+                        canvas.addEventListener('mouseup', stopDrawing);
+                        canvas.addEventListener('contextmenu', finishDrawing);
+                        
+                        showStatus('✅ Video frame loaded! Draw boundary line.', 'success');
+                        
+                        if (currentMethod === 'HOUGH') {
+                            detectHoughLines();
+                        }
+                    };
+                } else {
+                    showStatus('❌ Could not load video frame: ' + data.error, 'error');
+                }
+            })
+            .catch(error => {
+                showStatus('❌ Error loading frame: ' + error, 'error');
+            });
+        }
+        
+        function detectHoughLines() {
+            fetch('/detect_lines', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({method: 'HOUGH'})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.lines) {
+                    houghLines = data.lines;
+                    displayHoughLines();
+                }
+            });
+        }
+        
+        function displayHoughLines() {
+            const container = document.getElementById('houghLines');
+            container.innerHTML = '<p>Select a detected line:</p>';
+            container.classList.remove('hidden');
+            
+            houghLines.forEach((line, index) => {
+                const option = document.createElement('div');
+                option.className = 'line-option';
+                option.textContent = `Line ${index + 1}`;
+                option.addEventListener('click', () => selectHoughLine(index));
+                container.appendChild(option);
+            });
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = '#ff0000';
+            ctx.lineWidth = 2;
+            
+            houghLines.forEach(line => {
+                ctx.beginPath();
+                ctx.moveTo(line.x1, line.y1);
+                ctx.lineTo(line.x2, line.y2);
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.arc(line.center_x, line.center_y, 10, 0, 2 * Math.PI);
+                ctx.fillStyle = '#ffff00';
+                ctx.fill();
+                ctx.fillStyle = '#000000';
+                ctx.fillText(line.id + 1, line.center_x - 5, line.center_y + 5);
+            });
+        }
+        
+        function selectHoughLine(index) {
+            selectedHoughLine = index;
+            document.querySelectorAll('.line-option').forEach((opt, i) => {
+                opt.classList.toggle('selected', i === index);
+            });
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            houghLines.forEach((line, i) => {
+                ctx.strokeStyle = i === index ? '#00ff00' : '#cccccc';
+                ctx.lineWidth = i === index ? 4 : 1;
+                
+                ctx.beginPath();
+                ctx.moveTo(line.x1, line.y1);
+                ctx.lineTo(line.x2, line.y2);
+                ctx.stroke();
+            });
+            
+            document.getElementById('saveBoundaryBtn').disabled = false;
+        }
+        
+        function startDrawing(e) {
+            if (currentMethod === 'HOUGH') return;
+            
+            console.log('Start drawing, method:', currentMethod);
+            
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            // Account for canvas scaling
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+            
+            console.log('Click at:', x, y);
+            
+            drawingPoints.push({x, y});
+            
+            if (currentMethod === 'TWO_POINTS' && drawingPoints.length === 2) {
+                finishDrawing();
+            }
+            
+            redrawCanvas();
+        }
+        
+        function draw(e) {
+            if (!isDrawing || currentMethod !== 'MULTIPOINTS') return;
+            
+            const rect = canvas.getBoundingClientRect();
+            // Account for canvas scaling
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+            
+            redrawCanvas();
+            if (drawingPoints.length > 0) {
+                ctx.strokeStyle = '#ffff00';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(drawingPoints[drawingPoints.length - 1].x, drawingPoints[drawingPoints.length - 1].y);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+            }
+        }
+        
+        function stopDrawing() {
+            isDrawing = false;
+        }
+        
+        function finishDrawing(e) {
+            if (e) e.preventDefault();
+            
+            console.log('Finish drawing, points:', drawingPoints.length);
+            
+            if (drawingPoints.length >= 2) {
+                document.getElementById('saveBoundaryBtn').disabled = false;
+                redrawCanvas();
+                showStatus(`✅ ${drawingPoints.length} points selected. Ready to save boundary.`, 'success');
+            }
+        }
+        
+        function redrawCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (drawingPoints.length > 0) {
+                ctx.strokeStyle = '#00ff00';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(drawingPoints[0].x, drawingPoints[0].y);
+                
+                for (let i = 1; i < drawingPoints.length; i++) {
+                    ctx.lineTo(drawingPoints[i].x, drawingPoints[i].y);
+                }
+                ctx.stroke();
+                
+                ctx.fillStyle = '#ff0000';
+                drawingPoints.forEach(point => {
+                    ctx.beginPath();
+                    ctx.arc(point.x, point.y, 4, 0, 2 * Math.PI);
+                    ctx.fill();
+                });
+            }
+        }
+        
+        function resetDrawing() {
+            drawingPoints = [];
+            selectedHoughLine = -1;
+            document.getElementById('houghLines').classList.add('hidden');
+            document.getElementById('saveBoundaryBtn').disabled = true;
+            if (canvas) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+        
+        function saveBoundary() {
+            let points = [];
+            
+            if (currentMethod === 'HOUGH' && selectedHoughLine >= 0) {
+                const line = houghLines[selectedHoughLine];
+                points = [[line.x1, line.y1], [line.x2, line.y2]];
+            } else {
+                points = drawingPoints.map(p => [p.x, p.y]);
+            }
+            
+            const img = document.getElementById('videoFrame');
+            const displayWidth = img.naturalWidth;
+            const displayHeight = img.naturalHeight;
+            
+            fetch('/save_boundary', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    points: points, 
+                    method: currentMethod,
+                    display_width: displayWidth,
+                    display_height: displayHeight
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showStatus('✅ Boundary saved! Preparing player tracking preview...', 'success');
+                    document.getElementById('setupPhase').style.display = 'none';
+                    document.getElementById('trackingPhase').style.display = 'block';
+                    boundaryDefined = true;
+                    // Show preview instead of auto-starting
+                    setTimeout(showPreview, 1000);
+                } else {
+                    showStatus('❌ Failed to save boundary', 'error');
+                }
+            });
+        }
+        
+        function showPreview() {
+            showStatus('🔍 Generating player tracking preview...', 'info');
+            
+            fetch('/preview_tracking', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const previewImg = document.getElementById('previewFrame');
+                    previewImg.src = 'data:image/jpeg;base64,' + data.preview_frame;
+                    previewImg.style.display = 'block';
+                    
+                    document.getElementById('confirmTrackingBtn').style.display = 'inline-block';
+                    document.getElementById('retryPreviewBtn').style.display = 'inline-block';
+                    
+                    const statusDiv = document.getElementById('previewStatus');
+                    statusDiv.innerHTML = `
+                        <div class="status-success">
+                            ✅ Preview Ready! ${data.players_detected} players detected.<br>
+                            <small>Review the player tracking above, then click "Start Live Tracking" to begin.</small>
+                        </div>
+                    `;
+                    statusDiv.style.display = 'block';
+                } else {
+                    showStatus('❌ Preview failed: ' + data.error, 'error');
+                    document.getElementById('retryPreviewBtn').style.display = 'inline-block';
+                }
+            })
+            .catch(error => {
+                showStatus('❌ Preview error: ' + error, 'error');
+                document.getElementById('retryPreviewBtn').style.display = 'inline-block';
+            });
+        }
+        
+        function startTracking() {
+            fetch('/start_live_tracking', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Hide preview phase, show live tracking
+                    document.getElementById('previewPhase').style.display = 'none';
+                    document.getElementById('liveTrackingPhase').style.display = 'block';
+                    
+                    document.getElementById('liveVideo').style.display = 'block';
+                    document.getElementById('liveVideo').src = '/video_feed?' + new Date().getTime();
+                    document.getElementById('stopTrackingBtn').style.display = 'inline-block';
+                    trackingActive = true;
+                    showStatus('🚀 Live tracking with enhanced player detection started!', 'success');
+                } else {
+                    showStatus('❌ Failed to start tracking: ' + data.error, 'error');
+                }
+            });
+        }
+        
+        function stopTracking() {
+            fetch('/stop_tracking', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({})
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('liveVideo').style.display = 'none';
+                document.getElementById('stopTrackingBtn').style.display = 'none';
+                
+                // Show preview phase again
+                document.getElementById('liveTrackingPhase').style.display = 'none';
+                document.getElementById('previewPhase').style.display = 'block';
+                document.getElementById('confirmTrackingBtn').style.display = 'inline-block';
+                
+                trackingActive = false;
+                showStatus('⏹️ Tracking stopped. You can restart from preview.', 'info');
+            });
+        }
+        
+        function updateViolationStats() {
+            if (!trackingActive) return;
+            
+            fetch('/get_violations')
+            .then(response => response.json())
+            .then(data => {
+                // Update active players count (estimate from current poses)
+                document.getElementById('activePlayersCount').textContent = Math.max(0, 8 - data.violated_players.length);
+                document.getElementById('violatedPlayersCount').textContent = data.violated_players.length;
+                document.getElementById('totalViolationsCount').textContent = data.total_violations;
+                
+                const logContainer = document.getElementById('violationLog');
+                if (data.violation_log.length > 0) {
+                    logContainer.innerHTML = '';
+                    data.violation_log.slice(-10).forEach(violation => {
+                        const entry = document.createElement('div');
+                        entry.className = 'violation-entry critical';
+                        entry.innerHTML = `
+                            <strong>${violation.player_id}</strong> violated at ${violation.timestamp}<br>
+                            <small>Frame: ${violation.frame}</small>
+                        `;
+                        logContainer.appendChild(entry);
+                    });
+                } else {
+                    logContainer.innerHTML = '<p style="text-align: center; color: #666;">No violations detected yet</p>';
+                }
+                
+                const playersContainer = document.getElementById('violatedPlayersList');
+                if (data.violated_players.length > 0) {
+                    playersContainer.innerHTML = data.violated_players.map(player => 
+                        `<div style="padding: 8px; margin: 5px 0; background: #f8d7da; border-radius: 5px; text-align: center;">
+                            <strong>${player}</strong> - ELIMINATED
+                        </div>`
+                    ).join('');
+                } else {
+                    playersContainer.innerHTML = '<p style="text-align: center; color: #666;">No players eliminated yet</p>';
+                }
+            })
+            .catch(error => {
+                console.log('Stats update error:', error);
+            });
+        }
+        
+        function clearViolationLog() {
+            document.getElementById('violationLog').innerHTML = '<p style="text-align: center; color: #666;">Log cleared</p>';
+        }
+        
+        function showStatus(message, type) {
+            const container = document.getElementById('statusMessages');
+            container.innerHTML = `<div class="status-message status-${type}">${message}</div>`;
+            
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

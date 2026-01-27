@@ -1,12 +1,11 @@
 import numpy as np
-from config_manager import config
 
 class PlayerTracker:
     def __init__(self):
         self.selected_players = {}
         self.next_player_id = 1
-        self.foot_history = {}
         self.last_violation_time = {}
+        self.MAX_CLICK_DISTANCE = 50  # Maximum distance for click detection
         
     def find_closest_pose(self, click_x, click_y, poses, frame_width, frame_height):
         """Find the closest pose to click position"""
@@ -20,13 +19,11 @@ class PlayerTracker:
                 head_y = int(pose_landmarks[0].y * frame_height)
                 
                 distance = np.sqrt((click_x - head_x)**2 + (click_y - head_y)**2)
-                print(f"Pose {i}: head at ({head_x}, {head_y}), click at ({click_x}, {click_y}), distance: {distance:.1f}")
                 
-                if distance < min_distance and distance < config.MAX_CLICK_DISTANCE:
+                if distance < min_distance and distance < self.MAX_CLICK_DISTANCE:
                     min_distance = distance
                     closest_pose_idx = i
         
-        print(f"Closest pose: {closest_pose_idx} (distance: {min_distance:.1f})")
         return closest_pose_idx
     
     def assign_player(self, pose_idx, frame_count):
@@ -40,28 +37,17 @@ class PlayerTracker:
         # Assign new player
         self.selected_players[self.next_player_id] = {
             'pose_index': pose_idx,
-            'last_seen': frame_count,
-            'manual_feet': {}
+            'last_seen': frame_count
         }
         self.last_violation_time[self.next_player_id] = 0
-        self.foot_history[self.next_player_id] = {'left': [], 'right': []}
         
         print(f"Assigned P{self.next_player_id}")
         self.next_player_id += 1
         return True
     
-    def set_manual_foot(self, player_id, foot_type, position):
-        """Set manual foot position for a player"""
-        if player_id in self.selected_players:
-            self.selected_players[player_id]['manual_feet'][foot_type] = position
-            print(f"Set P{player_id} {foot_type} foot to {position}")
-            return True
-        return False
-    
     def reset_all_players(self):
         """Reset all player selections"""
         self.selected_players.clear()
-        self.foot_history.clear()
         self.last_violation_time.clear()
         self.next_player_id = 1
         print("All players reset")
