@@ -1,0 +1,49 @@
+# Enhanced Multi-Player Skeleton Tracking System
+# Requirements for Final Year B.Tech Project
+
+# Core Computer Vision Libraries
+opencv-python>=4.8.0
+mediapipe>=0.10.0
+numpy>=1.21.0
+
+# Data Processing & Analysis
+pandas>=1.3.0
+scipy>=1.7.0
+
+# Configuration & Logging
+pyyaml>=6.0
+python-json-logger>=2.0.0
+
+# Performance & Optimization
+numba>=0.56.0
+pillow>=8.3.0
+
+# Development & Testing (Optional)
+pytest>=6.2.0
+black>=21.0.0
+flake8>=3.9.0
+
+# Documentation (Optional)
+sphinx>=4.0.0
+markdown>=3.3.0
+
+# System Requirements:
+# - Python 3.8 or higher
+# - Windows 10/11, macOS 10.15+, or Ubuntu 18.04+
+# - Minimum 8GB RAM (16GB recommended)
+# - GPU support optional but recommended for better performance
+# - Webcam or video file for input
+
+# Installation Instructions:
+# 1. Create virtual environment: python -m venv venv
+# 2. Activate environment: venv\Scripts\activate (Windows) or source venv/bin/activate (Linux/Mac)
+# 3. Install requirements: pip install -r requirements.txt
+# 4. Download MediaPipe model (automatic on first run)
+# 5. Run application: python enhanced_skeleton_tracker.py
+
+# Hardware Recommendations:
+# - CPU: Intel i5/AMD Ryzen 5 or better
+# - RAM: 16GB for optimal performance
+# - GPU: NVIDIA GTX 1060 or better (optional)
+# - Storage: 10GB free space for video clips
+# - Display: 1920x1080 minimum resolution

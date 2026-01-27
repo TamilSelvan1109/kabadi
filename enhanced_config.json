@@ -1,0 +1,44 @@
+{
+    "video_settings": {
+        "source": "assets/back_angle_video1.mp4",
+        "output_fps": 30,
+        "display_scale": 0.8
+    },
+    "tracking_parameters": {
+        "max_players": 8,
+        "min_pose_confidence": 0.4,
+        "min_tracking_confidence": 0.4,
+        "tracking_history_size": 10,
+        "player_assignment_threshold": 100
+    },
+    "violation_detection": {
+        "boundary_threshold_pixels": 10,
+        "violation_cooldown_seconds": 2.0,
+        "violations_for_out": 3,
+        "clip_duration_seconds": 3.0,
+        "pre_violation_buffer_seconds": 1.0
+    },
+    "skeleton_visualization": {
+        "normal_color": [0, 255, 0],
+        "violation_color": [0, 0, 255],
+        "out_color": [0, 0, 139],
+        "unassigned_color": [255, 255, 255],
+        "foot_highlight_color": [255, 255, 0],
+        "skeleton_thickness": 2,
+        "violation_thickness": 3,
+        "joint_radius": 4,
+        "foot_radius": 8
+    },
+    "boundary_points": [[155, 758], [658, 802]],
+    "output_directories": {
+        "violations": "violations",
+        "violation_clips": "violation_clips", 
+        "logs": "logs",
+        "screenshots": "screenshots"
+    },
+    "logging": {
+        "enable_console_log": true,
+        "enable_file_log": true,
+        "log_level": "INFO"
+    }
+}
