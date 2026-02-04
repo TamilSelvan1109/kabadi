@@ -1,9 +1,9 @@
 
 # Video file paths
 VIDEO_PATHS = {
-    'line_detection': 'assets/video3.mp4',
-    'player_tracking': 'assets/video3.mp4',
-    'skeleton_test': 'assets/video3.mp4'
+    'line_detection': 'assets/video2.mp4',
+    'player_tracking': 'assets/video2.mp4',
+    'skeleton_test': 'assets/video2.mp4'
 }
 
 # Alternative video sources (fallback options)
