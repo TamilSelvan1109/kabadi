@@ -1,13 +1,12 @@
 import cv2
 import json
 import numpy as np
-import webbrowser
-import threading
-from http.server import HTTPServer, SimpleHTTPRequestHandler
-import urllib.parse
 import os
+import tkinter as tk
+from tkinter import ttk
+from video_config import get_line_detection_video
 
-video_path = 'assets/back_angle_video1.mp4'
+video_path = get_line_detection_video()  # Centralized video configuration
 points = []
 scale_factor = 1.0
 mode = "IDLE"
@@ -15,17 +14,37 @@ detection_method = "TWO_POINTS"
 mouse_x, mouse_y = 0, 0
 hough_lines = []
 selected_line_idx = -1
+back_pressed = False
 
 def detect_hough_lines(image):
     try:
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        # Apply Gaussian blur to reduce noise
-        blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-        # Enhanced edge detection
-        edges = cv2.Canny(blurred, 30, 100, apertureSize=3)
-        # Improved Hough line detection with lower threshold
-        lines = cv2.HoughLines(edges, 1, np.pi/180, threshold=80)
-        return lines[:10] if lines is not None else []
+        # Focus on bottom 60% of image for better line detection
+        h, w = image.shape[:2]
+        bottom_region = image[int(h*0.4):, :]
+        
+        gray = cv2.cvtColor(bottom_region, cv2.COLOR_BGR2GRAY)
+        # Enhanced preprocessing
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+        enhanced = clahe.apply(gray)
+        blurred = cv2.GaussianBlur(enhanced, (3, 3), 0)
+        edges = cv2.Canny(blurred, 40, 120, apertureSize=3)
+        
+        # Display preprocessing steps
+        cv2.imshow('Grayscale', cv2.resize(gray, (400, 300)))
+        cv2.imshow('Canny Edges', cv2.resize(edges, (400, 300)))
+        
+        # More precise Hough line detection
+        lines = cv2.HoughLines(edges, 1, np.pi/180, threshold=50)
+        
+        if lines is not None:
+            adjusted_lines = []
+            for line in lines[:8]:  # Limit to 8 lines
+                rho, theta = line[0]
+                # Adjust rho for bottom region offset
+                adjusted_rho = rho + (int(h*0.4)) * np.sin(theta)
+                adjusted_lines.append([[adjusted_rho, theta]])
+            return adjusted_lines
+        return []
     except Exception as e:
         print(f"Hough line detection error: {e}")
         return []
@@ -36,22 +55,32 @@ def is_inside_button(x, y, btn_x1, btn_y1, btn_x2, btn_y2):
 def draw_ui(image, curr_x, curr_y):
     h, w, _ = image.shape
     
-    # Enhanced UI with better visibility
     # Background for buttons
-    cv2.rectangle(image, (10, 10), (350, 80), (0, 0, 0), -1)
-    cv2.rectangle(image, (10, 10), (350, 80), (255, 255, 255), 2)
+    cv2.rectangle(image, (10, 10), (550, 80), (0, 0, 0), -1)
+    cv2.rectangle(image, (10, 10), (550, 80), (255, 255, 255), 2)
     
-    # SAVE button - larger and more visible
-    cv2.rectangle(image, (20, 20), (150, 70), (0, 255, 0), -1)
-    cv2.rectangle(image, (20, 20), (150, 70), (0, 0, 0), 2)
-    cv2.putText(image, "SAVE", (55, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0,0,0), 3)
+    # BACK button
+    cv2.rectangle(image, (20, 20), (120, 70), (128, 128, 128), -1)
+    cv2.rectangle(image, (20, 20), (120, 70), (255, 255, 255), 2)
+    cv2.putText(image, "BACK", (45, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255,255,255), 2)
     
-    # RESET button - larger and more visible
-    cv2.rectangle(image, (170, 20), (300, 70), (0, 0, 255), -1)
-    cv2.rectangle(image, (170, 20), (300, 70), (255, 255, 255), 2)
-    cv2.putText(image, "RESET", (195, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255,255,255), 3)
+    # SAVE button
+    cv2.rectangle(image, (140, 20), (270, 70), (0, 255, 0), -1)
+    cv2.rectangle(image, (140, 20), (270, 70), (0, 0, 0), 2)
+    cv2.putText(image, "SAVE", (175, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0,0,0), 2)
     
-    # Method-specific instructions with background
+    # RESET button
+    cv2.rectangle(image, (290, 20), (420, 70), (0, 0, 255), -1)
+    cv2.rectangle(image, (290, 20), (420, 70), (255, 255, 255), 2)
+    cv2.putText(image, "RESET", (315, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255,255,255), 2)
+    
+    # RESELECT button for Hough method
+    if detection_method == "HOUGH" and selected_line_idx >= 0:
+        cv2.rectangle(image, (440, 20), (540, 70), (255, 165, 0), -1)
+        cv2.rectangle(image, (440, 20), (540, 70), (255, 255, 255), 2)
+        cv2.putText(image, "RESEL", (460, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,255,255), 2)
+    
+    # Method-specific instructions
     if detection_method == "TWO_POINTS":
         if len(points) == 0:
             msg = "Click first point"
@@ -68,41 +97,54 @@ def draw_ui(image, curr_x, curr_y):
             msg = "Click to start drawing"
     else:  # HOUGH
         if mode == "HOUGH_SELECT":
-            msg = "Click yellow circles to select line"
+            msg = "Press number keys (1-8) to select line or click circles"
         else:
-            msg = "Line selected. Click SAVE."
+            msg = f"Line {selected_line_idx+1} selected. Click SAVE or RESELECT."
     
     # Message background
     cv2.rectangle(image, (10, h - 50), (w - 10, h - 10), (0, 0, 0), -1)
     cv2.rectangle(image, (10, h - 50), (w - 10, h - 10), (255, 255, 255), 2)
-    cv2.putText(image, msg, (20, h - 25), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
+    cv2.putText(image, msg, (20, h - 25), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
 
 def mouse_callback(event, x, y, flags, param):
-    global points, mode, img_display, img_clean, mouse_x, mouse_y, selected_line_idx, hough_lines
+    global points, mode, img_display, img_clean, mouse_x, mouse_y, selected_line_idx, hough_lines, back_pressed
     
     mouse_x, mouse_y = x, y
     h, w, _ = img_display.shape
 
     if event == cv2.EVENT_LBUTTONDOWN:
+        # BACK button
+        if is_inside_button(x, y, 20, 20, 120, 70):
+            back_pressed = True
+            return
+        
         # SAVE button
-        if is_inside_button(x, y, 20, 20, 150, 70):
+        if is_inside_button(x, y, 140, 20, 270, 70):
             if (detection_method in ["TWO_POINTS", "MULTIPOINTS"] and len(points) >= 2) or \
                (detection_method == "HOUGH" and selected_line_idx >= 0):
                 save_line()
             return
         
         # RESET button
-        if is_inside_button(x, y, 170, 20, 300, 70):
+        if is_inside_button(x, y, 290, 20, 420, 70):
             reset_detection()
+            return
+        
+        # RESELECT button for Hough
+        if detection_method == "HOUGH" and selected_line_idx >= 0 and is_inside_button(x, y, 440, 20, 540, 70):
+            selected_line_idx = -1
+            mode = "HOUGH_SELECT"
+            redraw_hough_lines()
             return
         
         # Line drawing logic
         if detection_method == "TWO_POINTS":
-            points.append((x, y))
-            cv2.circle(img_display, (x, y), 4, (0, 0, 255), -1)
-            if len(points) == 2:
-                cv2.line(img_display, points[0], points[1], (0, 255, 0), 2)
-                mode = "DONE"
+            if len(points) < 2:  # Only allow 2 points maximum
+                points.append((x, y))
+                cv2.circle(img_display, (x, y), 4, (0, 0, 255), -1)
+                if len(points) == 2:
+                    cv2.line(img_display, points[0], points[1], (0, 255, 0), 2)
+                    mode = "DONE"
         
         elif detection_method == "MULTIPOINTS":
             if mode != "DONE":
@@ -162,7 +204,7 @@ def redraw_hough_lines():
     img_display = img_clean.copy()
     h, w = img_display.shape[:2]
     
-    for i, line in enumerate(hough_lines[:5]):
+    for i, line in enumerate(hough_lines[:8]):  # Show up to 8 lines
         rho, theta = line[0]
         a, b = np.cos(theta), np.sin(theta)
         x0, y0 = a * rho, b * rho
@@ -179,13 +221,14 @@ def redraw_hough_lines():
         
         if i == selected_line_idx:
             cv2.line(img_display, (x1, y1), (x2, y2), (0, 255, 0), 4)
-            cv2.circle(img_display, (int((x1 + x2) / 2), int((y1 + y2) / 2)), 20, (0, 255, 0), -1)
+            cv2.circle(img_display, (int((x1 + x2) / 2), int((y1 + y2) / 2)), 25, (0, 255, 0), -1)
         else:
-            cv2.line(img_display, (x1, y1), (x2, y2), (100, 100, 100), 1)
-            cv2.circle(img_display, (int((x1 + x2) / 2), int((y1 + y2) / 2)), 20, (255, 255, 0), 3)
+            cv2.line(img_display, (x1, y1), (x2, y2), (100, 100, 100), 2)
+            cv2.circle(img_display, (int((x1 + x2) / 2), int((y1 + y2) / 2)), 25, (0, 255, 255), 3)
         
-        cv2.putText(img_display, str(i+1), (int((x1 + x2) / 2)-8, int((y1 + y2) / 2)+8), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 2)
+        # Display number on circle
+        cv2.putText(img_display, str(i+1), (int((x1 + x2) / 2)-10, int((y1 + y2) / 2)+10), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 0), 3)
     
     draw_ui(img_display, mouse_x, mouse_y)
 
@@ -193,12 +236,15 @@ def reset_detection():
     global points, mode, img_display, selected_line_idx
     points = []
     selected_line_idx = -1
-    mode = "IDLE"
+    mode = "IDLE" if detection_method != "HOUGH" else "HOUGH_SELECT"
     img_display = img_clean.copy()
-    draw_ui(img_display, mouse_x, mouse_y)
+    if detection_method == "HOUGH":
+        redraw_hough_lines()
+    else:
+        draw_ui(img_display, mouse_x, mouse_y)
 
 def save_line():
-    global points, selected_line_idx, hough_lines
+    global points, selected_line_idx, hough_lines, scale_factor
     
     if detection_method == "HOUGH" and selected_line_idx >= 0:
         line = hough_lines[selected_line_idx]
@@ -211,24 +257,25 @@ def save_line():
         y2 = int((y0 - 500 * (a)) / scale_factor)
         real_points = [(x1, y1), (x2, y2)]
     else:
+        # Convert display coordinates back to original video coordinates
         real_points = [(int(p[0] / scale_factor), int(p[1] / scale_factor)) for p in points]
     
     data = {"boundary_points": real_points, "method": detection_method}
     with open("config.json", "w") as f:
         json.dump(data, f)
     
-    print(f"\n✅ SUCCESS: {detection_method} line saved!")
-    print("\n📋 NEXT STEPS:")
-    print("1. Run 'python main.py' to start tracking")
-    print("2. Boundary line will be loaded automatically")
+    print(f"✅ SUCCESS: {detection_method} line saved!")
+    print(f"Original coordinates: {real_points}")
+    print(f"Scale factor used: {scale_factor:.3f}")
     cv2.destroyAllWindows()
     exit()
 
 def start_detection(method):
-    global detection_method, mode, img_display, img_clean, hough_lines, selected_line_idx
+    global detection_method, mode, img_display, img_clean, hough_lines, selected_line_idx, back_pressed
     
     detection_method = method
     mode = "DRAWING" if method != "HOUGH" else "HOUGH_SELECT"
+    back_pressed = False
     
     # Load video frame
     cap = cv2.VideoCapture(video_path)
@@ -236,10 +283,10 @@ def start_detection(method):
     cap.release()
     
     if not ret:
+        print(f"Error: Could not load video from {video_path}")
         return False
     
-    # Resize frame - much bigger display
-    target_width = 1600  # Increased from 1000
+    target_width = 1280  # Standard display width
     orig_h, orig_w = frame.shape[:2]
     global scale_factor
     scale_factor = target_width / float(orig_w)
@@ -249,82 +296,80 @@ def start_detection(method):
     img_display = img_clean.copy()
     
     if method == "HOUGH":
+        print("Detecting Hough lines...")
         hough_lines = detect_hough_lines(img_clean)
-        h, w = img_display.shape[:2]
-        for i, line in enumerate(hough_lines[:5]):
-            rho, theta = line[0]
-            a, b = np.cos(theta), np.sin(theta)
-            x0, y0 = a * rho, b * rho
-            
-            if abs(b) > 0.001:
-                x1, y1 = 0, int(y0 - (x0 * a / b))
-                x2, y2 = w, int(y0 + ((w - x0) * a / b))
-            else:
-                x1, y1 = int(x0), 0
-                x2, y2 = int(x0), h
-            
-            x1, y1 = max(0, min(w, x1)), max(0, min(h, y1))
-            x2, y2 = max(0, min(w, x2)), max(0, min(h, y2))
-            
-            cv2.line(img_display, (x1, y1), (x2, y2), (0, 0, 255), 2)
-            center_x, center_y = int((x1 + x2) / 2), int((y1 + y2) / 2)
-            cv2.circle(img_display, (center_x, center_y), 20, (255, 255, 0), 3)
-            cv2.putText(img_display, str(i+1), (center_x-8, center_y+8), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 2)
+        print(f"Found {len(hough_lines)} lines")
+        if len(hough_lines) == 0:
+            print("No lines detected. Try adjusting detection parameters.")
+        redraw_hough_lines()
     
+    # Create resizable window that fits screen
     cv2.namedWindow('Line Detection', cv2.WINDOW_NORMAL)
-    cv2.resizeWindow('Line Detection', target_width, int(orig_h * scale_factor))
     cv2.setMouseCallback('Line Detection', mouse_callback)
     draw_ui(img_display, 0, 0)
     
     while True:
         cv2.imshow('Line Detection', img_display)
         key = cv2.waitKey(10) & 0xFF
-        if key == ord('q'):
+        
+        # Handle number key selection for Hough method
+        if method == "HOUGH" and mode == "HOUGH_SELECT" and key >= ord('1') and key <= ord('8'):
+            line_num = key - ord('1')
+            if line_num < len(hough_lines):
+                selected_line_idx = line_num
+                mode = "DONE"
+                redraw_hough_lines()
+        
+        if key == ord('q') or back_pressed:
             break
     
+    # Close preprocessing windows
+    cv2.destroyWindow('Grayscale')
+    cv2.destroyWindow('Canny Edges')
     cv2.destroyAllWindows()
     return True
 
-class RequestHandler(SimpleHTTPRequestHandler):
-    def do_POST(self):
-        if self.path == '/start_detection':
-            content_length = int(self.headers['Content-Length'])
-            post_data = self.rfile.read(content_length)
-            data = json.loads(post_data.decode('utf-8'))
-            
-            method = data.get('method', 'TWO_POINTS')
-            
-            # Start detection in separate thread
-            threading.Thread(target=start_detection, args=(method,), daemon=True).start()
-            
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({'success': True}).encode())
-        else:
-            self.send_response(404)
-            self.end_headers()
+class LineDetectionGUI:
+    def __init__(self):
+        self.root = tk.Tk()
+        self.root.title("Line Detection Tool")
+        self.root.geometry("400x300")
+        self.root.configure(bg='#2c3e50')
+        
+        # Title
+        title = tk.Label(self.root, text="LINE DETECTION TOOL", 
+                        font=('Arial', 16, 'bold'), fg='white', bg='#2c3e50')
+        title.pack(pady=20)
+        
+        # Buttons
+        btn_style = {'font': ('Arial', 12), 'width': 25, 'height': 2, 'relief': 'raised'}
+        
+        tk.Button(self.root, text="Two Points Detection", 
+                 command=lambda: self.start_detection("TWO_POINTS"),
+                 bg='#3498db', fg='white', **btn_style).pack(pady=10)
+        
+        tk.Button(self.root, text="Multi Points Detection", 
+                 command=lambda: self.start_detection("MULTIPOINTS"),
+                 bg='#e74c3c', fg='white', **btn_style).pack(pady=10)
+        
+        tk.Button(self.root, text="Hough Lines Detection", 
+                 command=lambda: self.start_detection("HOUGH"),
+                 bg='#f39c12', fg='white', **btn_style).pack(pady=10)
+        
+        tk.Button(self.root, text="Exit", command=self.root.quit,
+                 bg='#95a5a6', fg='white', **btn_style).pack(pady=20)
+    
+    def start_detection(self, method):
+        self.root.withdraw()  # Hide GUI window
+        start_detection(method)
+        self.root.deiconify()  # Show GUI window again
+    
+    def run(self):
+        self.root.mainloop()
 
-def start_web_server():
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    server = HTTPServer(('localhost', 8000), RequestHandler)
-    print("Web server started at http://localhost:8000")
-    server.serve_forever()
+def main():
+    gui = LineDetectionGUI()
+    gui.run()
 
 if __name__ == "__main__":
-    # Start web server in background
-    threading.Thread(target=start_web_server, daemon=True).start()
-    
-    # Open dashboard in browser
-    webbrowser.open('http://localhost:8000/dashboard.html')
-    
-    print("\n🌐 Dashboard opened in browser")
-    print("Select detection method and click Start")
-    print("Press Ctrl+C to exit")
-    
-    try:
-        while True:
-            pass
-    except KeyboardInterrupt:
-        print("\nShutting down...")
+    main()
