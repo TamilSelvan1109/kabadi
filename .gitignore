@@ -48,9 +48,6 @@ ENV/
 ehthumbs.db
 Thumbs.db
 
-# MediaPipe Models
-*.task
-
 # Temporary Files
 *.tmp
 *.temp
