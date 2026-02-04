@@ -9,11 +9,13 @@ from .skeleton_tracker import SkeletonTracker
 from .player_id_manager import PlayerIDManager
 from .boundary_detector import BoundaryDetector
 from .violation_recorder import ViolationRecorder
+from .kalman_tracker import KalmanTracker
 
 __all__ = [
     'YOLODetector',
     'SkeletonTracker', 
     'PlayerIDManager',
     'BoundaryDetector',
-    'ViolationRecorder'
+    'ViolationRecorder',
+    'KalmanTracker'
 ]
